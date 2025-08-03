@@ -12,7 +12,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /flight-booking/booking:
+ * /api/v1/booking:
  *   post:
  *     summary: Create a new flight booking
  *     tags: [Booking]
@@ -27,29 +27,52 @@ const router = express.Router();
  *                 type: string
  *               userId:
  *                 type: string
- *               seatNumber:
+ *               status:
  *                 type: string
+ *                 enum: [booked, cancelled, initiated, pending]
+ *               noOfSeats:
+ *                 type: integer
+ *               totalCost:
+ *                 type: integer
  *             required:
  *               - flightId
  *               - userId
+ *               - status
+ *               - noOfSeats
+ *               - totalCost
  *     responses:
  *       200:
  *         description: Booking created successfully
  */
+
 router.post('/', BookingController.createBooking);
 
 /**
  * @swagger
- * /flight-booking/payments:
+ * /api/v1/booking/payments:
  *   post:
  *     summary: Make a payment for a booking
  *     tags: [Bookings]
+ *     parameters:
+ *       - in: header
+ *         name: x-idempotency-key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique key to ensure idempotent payment
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Payment'
+ *             type: object
+ *             properties:
+ *               totalCost:
+ *                 type: number
+ *               userId:
+ *                 type: string
+ *               bookingId:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Payment processed successfully

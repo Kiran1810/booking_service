@@ -44,6 +44,10 @@ async function makePayment(data){
 try{
      
     const BookingDetails=await bookingRepository.get(data.bookingId,transaction)
+    console.log(BookingDetails.status,"status")
+      if (!BookingDetails) {
+      throw new AppError('Booking not found', StatusCodes.NOT_FOUND);
+    }
     if(BookingDetails.totalCost!=data.totalCost ){
         throw new AppError('Not paid required amount', StatusCodes.BAD_REQUEST);
     }
@@ -53,32 +57,35 @@ try{
     
     const bookingTime= new Date(BookingDetails.createdAt);
     const currentTime=new Date();
-    if(currentTime-bookingTime>300000){
+    if(currentTime-bookingTime>60 * 60 * 1000){
       
        await cancelBooking(data.bookingId)
         throw new AppError('booking time is out!!', StatusCodes.BAD_REQUEST);
-        return response;
+       
     }
     if(BookingDetails.userId!=data.userId){
-        throw new AppError('Not correct id', StatusCodes.BAD_REQUEST);
+        throw new AppError('Unauthorized user', StatusCodes.BAD_REQUEST);
     }
      await bookingRepository.update(data.bookingId, {status:BOOKED},transaction)
 
      console.log("before");     
-     const user = await axios.get(`${ServerConfig.USER_SERVICE}/api/v1/user`);
-     const kk=user.data.data
-     const effectiveEmail=kk[data.userId-1].email;
-     console.log(effectiveEmail)
+     const userResponse = await axios.get(`${ServerConfig.USER_SERVICE}/api/v1/user/${data.userId}`);
+       const userData = userResponse.data.data;
+    const email = userData.email;;
+     console.log(email)
 
     console.log("after");
     
+    if(email){
      queue.sendData({
-        receipentEmail:effectiveEmail,
+        receipentEmail:email,
         subject:"Flight booked",
         text:`congratulations!! your booking is done successfully for the BookingId ${data.bookingId}`,
-       })
+       });
+    }
 
     await transaction.commit(); 
+     return { message: 'Payment successful & booking confirmed' };
    
     
    
@@ -97,8 +104,7 @@ catch(error){
     const transaction= await db.sequelize.transaction()
 try{
     const BookingDetails=await bookingRepository.get(bookingId,transaction)
-    if(BookingDetails.status==CANCELLED){
-       await transaction.commit();
+    if(!BookingDetails || BookingDetails.status==CANCELLED){
         return true;
         }
         await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${BookingDetails.flightId}/seats`, {
@@ -106,9 +112,9 @@ try{
             dec:false
 
         })
-           const response= await bookingRepository.update(bookingId, {status:CANCELLED},transaction)
+            await bookingRepository.update(bookingId, {status:CANCELLED},transaction)
            await transaction.commit();
- 
+            return true;
 
 
 }

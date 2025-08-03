@@ -1,5 +1,5 @@
 const {StatusCodes} = require('http-status-codes');
- const inMemDb={};
+ 
 const {BookingService}=require('../services');
 const {ErrorResponse,SuccessResponse}=require('../utils/common');
 
@@ -24,7 +24,7 @@ async function createBooking(req,res){
      .json(ErrorResponse);
        }
     } 
-
+const inMemDb = {};
     async function makePayments(req,res){
    try {
       const idempotencyKey = req.headers['x-idempotency-key'];
@@ -45,7 +45,7 @@ async function createBooking(req,res){
           userId: req.body.userId,
           bookingId: req.body.bookingId
       });
-      inMemDb[idempotencyKey] = idempotencyKey;
+      inMemDb[idempotencyKey] = true;
       SuccessResponse.data = response;
       return res
               .status(StatusCodes.OK)
